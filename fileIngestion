@@ -1,0 +1,60 @@
+Public Function ImportExcel()
+    DoCmd.SetWarnings False
+
+    Dim sDate As String
+    Dim combined As String
+    Dim archive As String
+    Dim oApp As Outlook.Application
+    Dim oMail As MailItem
+    Set oApp = CreateObject("Outlook.application")
+    
+    archive = "Y:\Archive Partner Reports\"
+    sDate = Format(Date, "yyyy.mm.dd") & "\"
+    combined = archive & sDate
+    
+    ' The code below will only work if the archive file hasn't been created
+    ' By putting this statement, we're able to build a redundancy with additional computers
+    If Dir(combined, vbDirectory) = "" Then
+        DoCmd.SetWarnings False
+        CurrentDb.Execute "Empty Combined"
+        ' 01-07 creates the consolidated template that's used to populate the CombinedTbl
+        CurrentDb.Execute "01 Take a Snapshot of Local Combined Template Table for QC"
+        CurrentDb.Execute "03 Initialize Consolidated Template"
+        CurrentDb.Execute "04 Tier 1 2 3 Targets (template)"
+        CurrentDb.Execute "04 Tier 1 and 2 Source-only (template)"
+        CurrentDb.Execute "05 Tier 3 Add to Consolidated where Exceptions like at Source"
+        CurrentDb.Execute "06 Delete from Consolidated where Exception is like AMH"
+        CurrentDb.Execute "06 Delete from Consolidated where Exceptions is like at Source"
+        CurrentDb.Execute "06 Delete from Consolidated where Frequency is like Realtime"
+        CurrentDb.Execute "07 Update Frequency to Daily for Frequency like Daily"
+        CurrentDb.Execute "07 Update Frequency to Monthly for Frequency like Monthly"
+        CurrentDb.Execute "07 Update Frequency to Quarterly for Frequency like Quarterly"
+        CurrentDb.Execute "07 Update Frequency to Weekly for Frequency like Weekly"
+        ' 01-02 creates the non-daily template with a combination of information from the batch reporting schedule and consolidated template
+        CurrentDb.Execute "01 Empty Consolidated Non-Daily"
+        CurrentDb.Execute "02 Create Consolidated Non-Daily"
+        ' After creating the Consolidated Template, we pull todays daily and non-daily records and push it to the CombinedTbl
+        CurrentDb.Execute "Import Records - Daily"
+        CurrentDb.Execute "Import Received Not-Daily"
+        ' The CombinedTbl is then pushed to SharePoint and the CombinedTbl is cleaned out.
+        CurrentDb.Execute "Push to SharePoint"
+        CurrentDb.Execute "Empty Combined"
+        MkDir combined
+        Set oMail = oApp.CreateItem(olMailItem)
+        oMail.Body = "The File Ingestion Macro ran sucessfully and the archive folder has been created."
+        oMail.Subject = "INGESTION TEST - DISREGARD"
+        oMail.To = "Michael.Pimley_ACN@dhhs.nc.gov"
+        oMail.Send
+        Set oMail = Nothing
+        Set oApp = Nothing
+        DoCmd.SetWarnings True
+    Else
+        Set oMail = oApp.CreateItem(olMailItem)
+        oMail.Body = "The File Ingestion Macro attempted to run, but wasn't necessary as it ran earlier."
+        oMail.Subject = "INGESTION TEST - DISREGARD"
+        oMail.To = "Michael.Pimley_ACN@dhhs.nc.gov"
+        oMail.Send
+        Set oMail = Nothing
+        Set oApp = Nothing
+    End If
+End Function
