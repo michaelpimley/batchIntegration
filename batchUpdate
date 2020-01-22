@@ -1,0 +1,92 @@
+Public Function UpdateReport()
+    DoCmd.SetWarnings False
+    
+    Dim strPathFile As String, strFile As String, strPath As String
+    Dim strTable As String
+    Dim blnHasFieldNames As Boolean
+    Dim sDate As String
+    Dim strURL As String
+    Dim combined As String
+    Dim archive As String
+    Dim i As Integer
+    Dim oApp As Outlook.Application
+    Dim oMail As MailItem
+    Set oApp = CreateObject("Outlook.application")
+        
+    archive = "Y:\Archive Partner Reports\"
+    sDate = Format(Date, "yyyy.mm.dd") & "\"
+    combined = archive & sDate
+    i = 0
+    
+    ' Change this next line to True if the first row in EXCEL worksheet has field names
+    blnHasFieldNames = True
+    
+    ' The strPath is for the staging folder (where the excel content is coming from) and the archive is the archive folder (where the excel content will be moved)
+    strPath = "Y:\Partner Reports Staging Folder\"
+    archive = "Y:\Archive Partner Reports\"
+    
+    ' The LoadingTbl is where the data will be staged (unmanipulated) before it is joined with the consolidated template and pushed to the combinedtbl
+    strTable = "LoadingTbl"
+
+    ' Combined is the archive (where the excel content is coming from) with the date added to it - this is today's dates folder (on SharePoint)
+    combined = archive & sDate
+    ' strFile is the file name for the document we're dealing with. By default, it's the first file in the folder.
+    strFile = Dir(strPath & "*.xlsx")
+    
+    If Dir(combined, vbDirectory) <> "" Then
+        Do While Len(strFile) > 0
+            ' The following pieces of code re-declares the names for each iteration of the loop (allows us to move file by file through the folder)
+            strFile = Dir(strPath & "*.xlsx")
+            combined = archive & sDate & strFile
+            strPathFile = strPath & strFile
+              
+            ' This takes the file in the folder and copies the content to the loading table.
+            DoCmd.TransferSpreadsheet acImport, acSpreadsheetTypeExcel12Xml, _
+                    strTable, strPathFile, blnHasFieldNames, "B1:O65536"
+            
+            'This copies the file from the staging folder to the archive folder - after it's been loaded to the loading table - and deletes the file from the staging folder
+            FileCopy strPathFile, combined
+            Kill strPathFile
+    
+            'The following cleans out the strFile so it can be redeclares above.
+            strFile = Dir()
+            ' This integer will be used to determine if we're pushing anything to SharePoint
+            ' If i = 1, the push will happen. If i = 0, the push won't happen
+            i = 1
+        Loop
+        If i > 0 Then
+            DoCmd.SetWarnings False
+            CurrentDb.Execute "Empty Loading"
+            'The Update Batch Reporting Info query will take the content from the loading table, and update the batch reporting info table as necessary.
+            CurrentDb.Execute "Update Batch Reporting Info - Daily"
+            CurrentDb.Execute "Update Batch Reporting Info - Non-Daily"
+            ' The Empty Loading query empties the loading table.
+            CurrentDb.Execute "Empty Loading"
+            Set oMail = oApp.CreateItem(olMailItem)
+            oMail.Body = "The Update macro ran successfully and the Batch info tab has been updated."
+            oMail.Subject = "UPDATE TEST - DISREGARD"
+            oMail.To = "Michael.Pimley_ACN@dhhs.nc.gov"
+            oMail.Send
+            Set oMail = Nothing
+            Set oApp = Nothing
+            DoCmd.SetWarnings True
+        Else
+            Set oMail = oApp.CreateItem(olMailItem)
+            oMail.Body = "The Update macro ran successfully but no files were in the staging folder."
+            oMail.Subject = "UPDATE TEST - DISREGARD"
+            oMail.To = "Michael.Pimley_ACN@dhhs.nc.gov"
+            oMail.Send
+            Set oMail = Nothing
+            Set oApp = Nothing
+        End If
+    Else
+       Set oMail = oApp.CreateItem(olMailItem)
+       oMail.Body = "The Update macro attempted to run, but the archive folder doesn't exist."
+       oMail.Subject = "UPDATE TEST - DISREGARD"
+       oMail.To = "Michael.Pimley_ACN@dhhs.nc.gov"
+       oMail.Send
+       Set oMail = Nothing
+       Set oApp = Nothing
+    End If
+End Function
+
