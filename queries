@@ -84,4 +84,33 @@ Empty Loading
 DELETE LoadingTbl.*
 FROM LoadingTbl;
 _____________________________________________________________________________________________________________________________________________
+Update Frequency to Daily for Frequency Like Daily
+
+UPDATE [Consolidated Template] SET [Consolidated Template].Frequency = "Daily"
+WHERE ((([Consolidated Template].Frequency) Like "*Daily*"));
+_____________________________________________________________________________________________________________________________________________
+Update Frequency to Monthly for Frequency Like Monthly
+
+UPDATE [Consolidated Template] SET [Consolidated Template].Frequency = "Monthly"
+WHERE ((([Consolidated Template].Frequency) Like "*monthly*"));
+_____________________________________________________________________________________________________________________________________________
+Update Frequency to Quarterly for Frequency like Quarterly
+
+UPDATE [Consolidated Template] SET [Consolidated Template].Frequency = "Quarterly"
+WHERE ((([Consolidated Template].Frequency) Like "*quarterly*"));
+_____________________________________________________________________________________________________________________________________________
+Update Frequency to Weekly for Frequency like Weekly
+
+UPDATE [Consolidated Template] SET [Consolidated Template].Frequency = "Weekly"
+WHERE ((([Consolidated Template].Frequency) Like "*weekly*"));
+_____________________________________________________________________________________________________________________________________________
+Update Batch Reporting Info - Daily
+
+UPDATE [Batch Reporting Info] AS C INNER JOIN LoadingTbl AS L ON (C.interfaceNumber = L.[Interface ID]) AND (C.direction = L.[Sent/Received]) AND (C.actualEffective = L.effectiveDate) SET C.interfaceID = [L].[Interface ID], C.status = L.realStatus, C.dateTimeSentReceived = L.[Date/Time Sent/Received], C.effectiveDate = L.effectiveDate, C.processStart = L.[Process Start Time], C.processEnd = L.[Process End Time], C.fileSize = L.[File Size], C.recordsSent = L.[Records Sent/Received], C.recordsProcessed = L.[Records Processed (Target Only)], C.errorCount = L.[Error Count (Target Only)], C.updated = Now(), C.actualEffective = L.actualEffective;
+_____________________________________________________________________________________________________________________________________________
+Update Batch Reporting Info  - Non-Daily
+
+UPDATE [Batch Reporting Info] AS C INNER JOIN LoadingTbl AS L ON (C.actualEffective = L.effectiveDate) AND (C.direction = L.[Sent/Received]) AND (C.interfaceNumber = L.[Interface ID]) SET C.interfaceID = L.[Interface ID], C.status = L.Status, C.dateTimeSentReceived = L.[Date/Time Sent/Received], C.effectiveDate = L.effectiveDate, C.processStart = L.[Process Start Time], C.processEnd = L.[Process End Time], C.fileSize = L.[File Size], C.recordsSent = L.[Records Sent/Received], C.recordsProcessed = L.[Records Processed (Target Only)], C.errorCount = L.[Error Count (Target Only)], C.updated = Now(), C.actualEffective = L.actualEffective;
+_____________________________________________________________________________________________________________________________________________
+
 
