@@ -1,0 +1,87 @@
+Take ShapShot of local combined template table
+
+INSERT INTO [Snapshots of Combined Template Table (QC)] ( [Snapshot Date], [Tier Priority], runDate, reportingEntity, direction, [Interface ID], [Integration Name], Frequency, Source, Target )
+SELECT Now() AS [Snapshot Date], [Consolidated Template].[Tier Priority], [Consolidated Template].runDate, [Consolidated Template].reportingEntity, [Consolidated Template].direction, [Consolidated Template].[Interface ID], [Consolidated Template].[Integration Name], [Consolidated Template].Frequency, [Consolidated Template].Source, [Consolidated Template].Target
+FROM [Consolidated Template];
+____________________________________________________________________________________________________________________________________________
+Create Consolidated Non-Daily
+
+INSERT INTO [Consolidated Non-Daily] ( interfaceID, tierPriority, reportingEntity, direction, frequencySP, summary, [Due Date], interfaceName, Source, Target )
+SELECT [Batch Reporting Schedule].interfaceID, [Batch Reporting Schedule].tierPriority, [Batch Reporting Schedule].reportingEntity, [Batch Reporting Schedule].direction, [Batch Reporting Schedule].frequencySP, [Batch Reporting Schedule].Summary, [Batch Reporting Schedule].[Due Date], [Consolidated Template].[Integration Name], [Consolidated Template].Source, [Consolidated Template].Target
+FROM [Batch Reporting Schedule] INNER JOIN [Consolidated Template] ON ([Batch Reporting Schedule].interfaceID = [Consolidated Template].[Interface ID]) AND ([Batch Reporting Schedule].direction = [Consolidated Template].direction);
+_____________________________________________________________________________________________________________________________________________
+Tier 1 2 3 targets
+
+INSERT INTO [Consolidated Template] ( [Tier Priority], runDate, [Exceptions to Standard Monitoring], reportingEntity, direction, [Interface ID], [Integration Name], Frequency, Source, Target, Status, [Date Time Received], [Process Start Date Time], [Process Finish Date Time], [File Size], [Records Sent or Received], [Records Processed (Target)], [Error Count (Target)], [In Production] )
+SELECT Left([TechOps Interfaces Data].[Priority],1) AS [Tier Priority], [Interface Inventory].[In Service Date] AS runDate, [TechOps Interfaces Data].[Exceptions to Standard Monitoring], [Interface Inventory].[Interface System] AS reportingEntity, "Receiving Entity" AS direction, [Interface Inventory].[Interface Number] AS [Interface ID], [Integration Library].[Integration Name], [Integration Library].Frequency AS Frequency, [Interface Inventory].[Integration Used:Source System] AS Source, [Interface Inventory].[Interface System] AS Target, "Enter Status of the data exchange" AS Status, "Enter Date Time Received" AS [Date Time Received], "Enter Process Start Date Time" AS [Process Start Date Time], "Enter Process Finish Date Time" AS [Process Finish Date Time], "Enter file size in bytes" AS [File Size], "Enter the number of records sent or received" AS [Records Sent or Received], "Enter records processed" AS [Records Processes (Target)], "Enter error count" AS [Error Count (Target)], [TechOps Interfaces Data].[In Production Status]
+FROM ([Integration Library] RIGHT JOIN [Interface Inventory] ON [Integration Library].ID = [Interface Inventory].[Integration Used]) LEFT JOIN [TechOps Interfaces Data] ON [Interface Inventory].[Interface Number] = [TechOps Interfaces Data].[Task Name]
+WHERE (((Left([TechOps Interfaces Data].[Priority],1)) Like "1*" Or (Left([TechOps Interfaces Data].[Priority],1)) Like "2*" Or (Left([TechOps Interfaces Data].[Priority],1)) Like "3*"));
+_____________________________________________________________________________________________________________________________________________
+Tier 1 and 2 Source Only
+
+INSERT INTO [Consolidated Template] ( [Tier Priority], runDate, [Exceptions to Standard Monitoring], reportingEntity, direction, [Interface ID], [Integration Name], Frequency, Source, Target, Status, [Date Time Received], [Process Start Date Time], [Process Finish Date Time], [File Size], [Records Sent or Received], [Records Processed (Target)], [Error Count (Target)], [In Production] )
+SELECT Left([TechOps Interfaces Data].[Priority],1) AS [Tier Priority], [Interface Inventory].[In Service Date] AS runDate, [TechOps Interfaces Data].[Exceptions to Standard Monitoring], [Interface Inventory].[Integration Used:Source System] AS reportingEntity, "Sending Entity" AS direction, [Interface Inventory].[Interface Number] AS [Interface ID], [Integration Library].[Integration Name], [Integration Library].Frequency AS Frequency, [Interface Inventory].[Integration Used:Source System] AS Source, [Interface Inventory].[Interface System] AS Target, "Enter Status of the data exchange" AS Status, "Enter Date Time Received" AS [Date Time Received], "Enter Process Start Date Time" AS [Process Start Date Time], "Enter Process Finish Date Time" AS [Process Finish Date Time], "Enter file size in bytes" AS [File Size], "Enter the number of records sent or received" AS [Records Sent or Received], "Enter records processed" AS [Records Processes (Target)], "Enter error count" AS [Error Count (Target)], [TechOps Interfaces Data].[In Production Status]
+FROM ([Integration Library] RIGHT JOIN [Interface Inventory] ON [Integration Library].ID = [Interface Inventory].[Integration Used]) LEFT JOIN [TechOps Interfaces Data] ON [Interface Inventory].[Interface Number] = [TechOps Interfaces Data].[Task Name]
+WHERE (((Left([TechOps Interfaces Data].[Priority],1)) Like "1*" Or (Left([TechOps Interfaces Data].[Priority],1)) Like "2*"));
+_____________________________________________________________________________________________________________________________________________
+Tier 3 add to consolidated where exceptions like at source
+
+INSERT INTO [Consolidated Template] ( [Tier Priority], runDate, [Exceptions to Standard Monitoring], reportingEntity, direction, [Interface ID], [Integration Name], Frequency, Source, Target, Status, [Date Time Received], [Process Start Date Time], [Process Finish Date Time], [File Size], [Records Sent or Received], [Records Processed (Target)], [Error Count (Target)], [In Production] )
+SELECT Left([TechOps Interfaces Data].[Priority],1) AS [Tier Priority], [Interface Inventory].[In Service Date] AS runDate, [TechOps Interfaces Data].[Exceptions to Standard Monitoring], [Interface Inventory].[Integration Used:Source System] AS reportingEntity, "Sending Entity" AS direction, [Interface Inventory].[Interface Number] AS [Interface ID], [Integration Library].[Integration Name], [Integration Library].Frequency AS Frequency, [Interface Inventory].[Integration Used:Source System] AS Source, [Interface Inventory].[Interface System] AS Target, "Enter Status of the data exchange" AS Status, "Enter Date Time Received" AS [Date Time Received], "Enter Process Start Date Time" AS [Process Start Date Time], "Enter Process Finish Date Time" AS [Process Finish Date Time], "Enter file size in bytes" AS [File Size], "Enter the number of records sent or received" AS [Records Sent or Received], "Enter records processed" AS [Records Processes (Target)], "Enter error count" AS [Error Count (Target)], [TechOps Interfaces Data].[In Production Status]
+FROM ([Integration Library] RIGHT JOIN [Interface Inventory] ON [Integration Library].ID = [Interface Inventory].[Integration Used]) LEFT JOIN [TechOps Interfaces Data] ON [Interface Inventory].[Interface Number] = [TechOps Interfaces Data].[Task Name]
+WHERE (((Left([TechOps Interfaces Data].[Priority],1)) Like "3*") AND (([TechOps Interfaces Data].[Exceptions to Standard Monitoring]) Like "*at Source*"));
+_____________________________________________________________________________________________________________________________________________
+Import Received Not-Daily
+
+INSERT INTO CombinedTbl ( interfaceName, source, target, frequency, sentOrReceived, status, dateTimeSentReceived, processStart, processEnd, fileSize, recordsSent, recordsProcessed, errorCount, effectiveDate, interfaceNumber, integrationName, priority, reportingEntity, direction, secondFrequency )
+SELECT [Consolidated Non-Daily].interfaceName, [Consolidated Non-Daily].Source, [Consolidated Non-Daily].Target, [Consolidated Non-Daily].frequencySP, [Consolidated Non-Daily].direction, LoadingTbl.realStatus, LoadingTbl.[Date/Time Sent/Received], LoadingTbl.[Process Start Time], LoadingTbl.[Process End Time], LoadingTbl.[File Size], LoadingTbl.[Records Sent/Received], LoadingTbl.[Records Processed (Target Only)], LoadingTbl.[Error Count (Target Only)], LoadingTbl.effectiveDate, [Consolidated Non-Daily].interfaceID AS ID, [Consolidated Non-Daily].interfaceName AS Name, [Consolidated Non-Daily].tierPriority, [Consolidated Non-Daily].reportingEntity, [Consolidated Non-Daily].direction, [Consolidated Non-Daily].frequencySP
+FROM [Consolidated Non-Daily] LEFT JOIN LoadingTbl ON [Consolidated Non-Daily].interfaceID = LoadingTbl.[Interface ID]
+WHERE ((([Consolidated Non-Daily].tierPriority) Not Like ("4*")) AND (([Consolidated Non-Daily].Summary)=No) AND ((DateValue([Consolidated Non-Daily].[Due Date]))=DateValue(Now())));
+_____________________________________________________________________________________________________________________________________________
+Import Records - Daily
+
+INSERT INTO CombinedTbl ( priority, reportingEntity, interfaceNumber, integrationName, direction, interfaceID, interfaceName, Source, Target, Frequency, sentOrReceived, Status, dateTimeSentReceived, processStart, fileSize, recordsSent, recordsProcessed, errorCount, effectiveDate, secondFrequency )
+SELECT [Consolidated Template].[Tier Priority], [Consolidated Template].reportingEntity, [Consolidated Template].[Interface ID], [Consolidated Template].[Integration Name], [Consolidated Template].direction, LoadingTbl.[Interface ID], [Consolidated Template].[Integration Name], [Consolidated Template].Source, [Consolidated Template].Target, [Consolidated Template].Frequency, [Consolidated Template].direction, LoadingTbl.Status, LoadingTbl.[Date/Time Sent/Received], LoadingTbl.[Process Start Time], LoadingTbl.[File Size], LoadingTbl.[Records Sent/Received], LoadingTbl.[Records Processed (Target Only)], LoadingTbl.[Error Count (Target Only)], LoadingTbl.effectiveDate, [Consolidated Template].Frequency
+FROM [Consolidated Template] LEFT JOIN LoadingTbl ON [Consolidated Template].[Interface ID] = LoadingTbl.[Interface ID]
+WHERE ((([Consolidated Template].direction)="Receiving Entity") And (([Consolidated Template].Frequency)="Daily") And ((LoadingTbl.[Sent/Received])="Received" Or (LoadingTbl.[Sent/Received])="Receiving Entity") And (([Consolidated Template].[In Production])="In Production")) Or ((([Consolidated Template].direction)="Receiving Entity") And (([Consolidated Template].Frequency)="Daily") And (([Consolidated Template].[In Production])="In Production") And ((IsNull(LoadingTbl.[Sent/Received]<>False))<>False)) Or ((([Consolidated Template].direction)="Sending Entity") And (([Consolidated Template].Frequency)="Daily") And ((LoadingTbl.[Sent/Received])="Sent" Or (LoadingTbl.[Sent/Received])="Sending Entity") And (([Consolidated Template].[In Production])="In Production")) Or ((([Consolidated Template].direction)="Sending Entity") And (([Consolidated Template].Frequency)="Daily") And (([Consolidated Template].[In Production])="In Production") And ((IsNull(LoadingTbl.[Sent/Received]<>False))<>False));
+_____________________________________________________________________________________________________________________________________________
+Push to SharePoint
+
+INSERT INTO [Batch Reporting Info] ( interfaceID, interfaceName, source, target, frequency, sentOrReceived, status, dateTimeSentReceived, processStart, processEnd, fileSize, recordsSent, recordsProcessed, errorCount, effectiveDate, actualEffective, interfaceNumber, integrationName, priority, reportingEntity, direction, writtenDate, secondFrequency, updated, directionStandarized )
+SELECT CombinedTbl.interfaceID, CombinedTbl.interfaceName, CombinedTbl.source, CombinedTbl.target, CombinedTbl.frequency, CombinedTbl.sentOrReceived, CombinedTbl.status, CombinedTbl.dateTimeSentReceived, CombinedTbl.processStart, CombinedTbl.processEnd, CombinedTbl.fileSize, CombinedTbl.recordsSent, CombinedTbl.recordsProcessed, CombinedTbl.errorCount, CombinedTbl.effectiveDate, CombinedTbl.actualEffective, CombinedTbl.interfaceNumber, CombinedTbl.integrationName, CombinedTbl.priority, CombinedTbl.reportingEntity, CombinedTbl.direction, CombinedTbl.writtenDate, CombinedTbl.secondFrequency, CombinedTbl.Updated, CombinedTbl.directionStandarized
+FROM CombinedTbl;
+_____________________________________________________________________________________________________________________________________________
+Empty Consolidated Non-Daily
+
+DELETE [Consolidated Non-Daily].*
+FROM [Consolidated Non-Daily];
+_____________________________________________________________________________________________________________________________________________
+Delete from Consolidated where Expection is like AMH
+
+DELETE [Consolidated Template].[Exceptions to Standard Monitoring]
+FROM [Consolidated Template]
+WHERE ((([Consolidated Template].[Exceptions to Standard Monitoring]) Like "AMH*"));
+_____________________________________________________________________________________________________________________________________________
+Delete from Consolidated where expections is like at source
+
+DELETE [Consolidated Template].[Exceptions to Standard Monitoring], [Consolidated Template].direction
+FROM [Consolidated Template]
+WHERE ((([Consolidated Template].[Exceptions to Standard Monitoring]) Like "*at Source*") AND (([Consolidated Template].direction) Like "Receiving Entity"));
+_____________________________________________________________________________________________________________________________________________
+Delete from consolidated where frequency is like realtime
+
+DELETE [Consolidated Template].Frequency
+FROM [Consolidated Template]
+WHERE ((([Consolidated Template].Frequency) Like "*real*"));
+_____________________________________________________________________________________________________________________________________________
+Empty Combined
+
+DELETE CombinedTbl.*
+FROM CombinedTbl;
+_____________________________________________________________________________________________________________________________________________
+Empty Loading
+
+DELETE LoadingTbl.*
+FROM LoadingTbl;
+_____________________________________________________________________________________________________________________________________________
+
